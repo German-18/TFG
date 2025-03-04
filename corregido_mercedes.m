@@ -1,0 +1,34 @@
+clear
+clc
+%h=0.1;
+h=0.5;
+G=6.6726e-11;
+Mt=5.975e24;
+Ml=7.35e22;
+Rt=6.378e6;
+Rl=1.738e6;
+S=3.844e8;
+r1=S*(sqrt(Mt)/(sqrt(Mt)+sqrt(Ml)));
+%v0=sqrt(2)*sqrt(G*Mt/Rt+G*Ml/(S-Rt)-G*Mt/r1-G*Ml/(S-r1));
+v0=sqrt(2)*sqrt(G*Mt/Rt-G*Ml/(S-Rt)-G*Mt/r1+G*Ml/(S-r1));
+a=0;
+u(1,:)=[Rt,v0];
+x(1)=a;
+iter=1;
+fun=@(x,y)([y(2);-G*Mt./(y(1).^2)+G*Ml./(S-y(1)).^2]);
+d=S-Rl;
+while d-u(iter,1)>0.1
+    k1=fun(x(iter),u(iter,:))';
+    k2=fun(x(iter)+h/2,u(iter,:)+h*k1/2)';
+    k3=fun(x(iter)+h/2,u(iter,:)+h*k2/2)';
+    k4=fun(x(iter)+h,u(iter,:)+h*k3)';
+    u(iter+1,:)=u(iter,:)+(h/6)*(k1+2*k2+2*k3+k4);
+    u(iter+1,1)
+    x(iter+1)=x(iter)+h;
+    iter=iter+1;
+end
+tiempo=x(iter)
+plot(x,u(:,2))
+legend('Velocidad','Location','Best')
+ylabel('Velocidad')
+xlabel('Tiempo')
