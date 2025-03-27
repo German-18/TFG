@@ -11,6 +11,8 @@ Rl = 1.737e6        # Moon radius
 S = 3.844e8         # Earth-Moon distance
 w = 2.662e-6        # Moon's angular velocity
 
+# Ecuaciones de movimiento
+
 def equations_of_motion(t, state):
     """
     State vector: [x, y, vx, vy]
@@ -31,6 +33,8 @@ def equations_of_motion(t, state):
     
     return [vx, vy, ax_earth + ax_moon, ay_earth + ay_moon]
 
+# Detección de colisiones
+
 def collision_event(t, state):
     """
     Detect collisions with Earth or Moon
@@ -42,6 +46,8 @@ def collision_event(t, state):
     return [r_earth - Rt, r_moon - Rl]
 
 collision_event.terminal = True
+
+# Definición de la función principal
 
 def main(v0):
     # Initial conditions
@@ -76,6 +82,8 @@ def main(v0):
     plt.xlabel('x (m)')
     plt.ylabel('y (m)')
     plt.show()
+
+#Ejecución del programa
 
 if __name__ == '__main__':
     # Example initial velocity
