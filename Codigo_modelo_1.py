@@ -63,3 +63,4 @@ if __name__ == '__main__':
     v0 = np.sqrt(2) * np.sqrt(G*Mt/Rt - G*Ml/(S-Rt) - G*Mt/r1 + G*Ml/(S-r1))
 
     main(v0)
+# Revisar la función de eventos, ya que no funciona correctamente.
