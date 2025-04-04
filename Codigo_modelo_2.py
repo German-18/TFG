@@ -8,7 +8,7 @@ Mt = 5.972e24       # Earth mass
 Ml = 7.34767309e22  # Moon mass
 Rt = 6.371e6        # Earth radius
 Rl = 1.737e6        # Moon radius
-S = 3.844e8         # Earth-Moon distance
+S = 3.844e8         # distancia entre los centros de la tierra y la luna.
 w = 2.662e-6        # Moon's angular velocity
 
 # Ecuaciones de movimiento
@@ -33,19 +33,30 @@ def equations_of_motion(t, state):
     
     return [vx, vy, ax_earth + ax_moon, ay_earth + ay_moon]
 
-# Detección de colisiones
+# Definición de función eventos que detecta colision con la Luna
+def collision_moon(t, state):
+    x, y = state[:2]
+    r_moon = np.sqrt((x - S*np.cos(w*t))**2 + (y - S*np.sin(w*t))**2)
+    disSupMoon = S-r_moon-Rl #Distancia entre el satélite y la Luna
+    return disSupMoon
+collision_moon.terminal = True # La integración se detiene cuando la función de eventos es cero
 
-def collision_event(t, state):
-    """
-    Detect collisions with Earth or Moon
-    """
+# Definición de función eventos que detecta colision con la Tierra
+def collision_earth(t, state):
     x, y = state[:2]
     r_earth = np.sqrt(x**2 + y**2)
-    r_moon = np.sqrt((x - S*np.cos(w*t))**2 + (y - S*np.sin(w*t))**2)
-    
-    return [r_earth - Rt, r_moon - Rl]
+    disSupEarth = r_earth-(Rt-10) #Distancia entre el satélite y 10 metros por debajo de la superficie de la Tierra
+    return disSupEarth
+collision_earth.terminal = True # La integración se detiene cuando la función de eventos es cero
 
-collision_event.terminal = True
+# Detección de colisiones
+
+#def collision_event(t, state):
+   # x, y = state[:2]
+    #r_earth = np.sqrt(x**2 + y**2)
+    #r_moon = np.sqrt((x - S*np.cos(w*t))**2 + (y - S*np.sin(w*t))**2)
+    #return [r_earth - Rt, r_moon - Rl]#Copiar lo del modelo 1 
+#collision_event.terminal = True
 
 # Definición de la función principal
 
