@@ -72,7 +72,7 @@ def main(v0):
     
     # Solve the system
     sol = solve_ivp(equations_of_motion, t_span, state0, 
-                    events=collision_event, method='RK45',
+                    events=[collision_moon,collision_earth], method='RK45',
                     rtol=1e-8, atol=1e-8)
     
     # Plot trajectory
