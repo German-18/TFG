@@ -8,7 +8,7 @@ Mt = 5.972e24       # Earth mass
 Ml = 7.34767309e22  # Moon mass
 Rt = 6.371e6        # Earth radius
 Rl = 1.737e6        # Moon radius
-S = 3.844e8         # Earth-Moon distance
+S = 3.844e8         # distancia entre los centros de la tierra y la luna.
 w = 2.662e-6        # Moon's angular velocity
 
 # Posicion de la Luna
