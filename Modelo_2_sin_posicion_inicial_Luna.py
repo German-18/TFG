@@ -37,7 +37,7 @@ def equations_of_motion(t, state):
 def collision_moon(t, state):
     x, y = state[:2]
     r_moon = np.sqrt((x - S*np.cos(w*t))**2 + (y - S*np.sin(w*t))**2)
-    disSupMoon = S-r_moon-Rl #Distancia entre el satélite y la Luna
+    disSupMoon = r_moon-Rl #Distancia entre el satélite
     return disSupMoon
 collision_moon.terminal = True # La integración se detiene cuando la función de eventos es cero
 
@@ -45,7 +45,7 @@ collision_moon.terminal = True # La integración se detiene cuando la función d
 def collision_earth(t, state):
     x, y = state[:2]
     r_earth = np.sqrt(x**2 + y**2)
-    disSupEarth = r_earth-(Rt-10) #Distancia entre el satélite y 10 metros por debajo de la superficie de la Tierra
+    disSupEarth = r_earth-(Rt-0.1) #Distancia entre el satélite y 10 cm por debajo de la superficie de la Tierra
     return disSupEarth
 collision_earth.terminal = True # La integración se detiene cuando la función de eventos es cero
 
@@ -59,15 +59,15 @@ def main(v0):
     vy0 = 0
     
     state0 = [x0, y0, vx0, vy0]
-    t_span = (0, 100*24*3600)  # 100 days in seconds
+    t_span = (0, 2*24*3600)  # 100 days in seconds
     
     # Solve the system
-    sol = solve_ivp(equations_of_motion, t_span, state0, 
-                    events=[collision_moon,collision_earth], method='RK45',
-                    rtol=1e-8, atol=1e-8)
+    sol = solve_ivp(equations_of_motion, t_span, state0, events=[collision_moon,collision_earth], method='RK45',rtol=1e-8, atol=1e-8)
     
-    print(sol.t[-1])
-    
+    # save solution in a csv as a function of time
+    # The solution is saved in a CSV file with the format: t,x,y,vx,vy
+    np.savetxt('solution.csv', np.column_stack((sol.t, sol.y[0], sol.y[1], sol.y[2], sol.y[3], np.sqrt((sol.y[0] - S*np.cos(w*sol.t))**2 + (sol.y[1] - S*np.sin(w*sol.t))**2-Rl))), delimiter=',', header='t,x,y,vx,vy,distance_moon')
+
     # Plot trajectory
     plt.figure(figsize=(12, 12))
     plt.plot(sol.y[0], sol.y[1], 'b-', label='Proyectil')
@@ -86,7 +86,7 @@ def main(v0):
     # Plot Moon surface only at final position
     plt.plot(S*np.cos(w*sol.t[-1]) + Rl*np.cos(theta), S*np.sin(w*sol.t[-1]) + Rl*np.sin(theta), 'gray', label='Luna')
     
-    plt.xlim(0, sol.y[0].max()*1.1)
+    plt.xlim(-sol.y[0].max()*1.1, sol.y[0].max()*1.1)
 
     # plt.axis('equal')
     plt.grid(True)
@@ -100,9 +100,11 @@ def main(v0):
 
 if __name__ == '__main__':
     # Example initial velocity
-    v0 = 1.0085*11000  # m/s
+    v0 = 11152#1.0085*11000  # m/s
     main(v0)
 
+
+#Gráficas conjuntas de velocidad final y distancia mínima a la superficie lunar en función de la velocidad inicial
 def analyze_combined_parameters(v0_range):
     """
     Analyzes and plots both final velocity and minimum distance to Moon's surface
@@ -120,11 +122,10 @@ def analyze_combined_parameters(v0_range):
         vy0 = 0
         
         state0 = [x0, y0, vx0, vy0]
-        t_span = (0, 365*24*3600)
+        t_span = (0, 10000*24*3600) # 100 days in seconds
         
         # Solve the system
-        sol = solve_ivp(equations_of_motion, t_span, state0, 
-                       method='RK45', rtol=1e-8, atol=1e-8)
+        sol = solve_ivp(equations_of_motion, t_span, state0, method='RK45', rtol=1e-8, atol=1e-8, events=[collision_moon,collision_earth])
         
         # Calculate final velocity
         final_vx = sol.y[2][-1]
@@ -132,7 +133,7 @@ def analyze_combined_parameters(v0_range):
         final_v = np.sqrt(final_vx**2 + final_vy**2)
         
         # Calculate minimum distance to Moon
-        min_dist = float('inf')
+        min_dist = 1e10  # Start with a large number
         for i in range(len(sol.t)):
             moon_x = S*np.cos(w*sol.t[i])
             moon_y = S*np.sin(w*sol.t[i])
@@ -143,18 +144,22 @@ def analyze_combined_parameters(v0_range):
         min_distances.append(min_dist)
         velocities.append(v0)
     
+    # Save velocities, final velocities and minimun distance as a csv
+    np.savetxt('optimization.csv', np.column_stack((velocities, final_velocities, min_distances)), delimiter=',', header='v_0,v_f,d_min')
+
     # Create figure with two y-axes
     fig, ax1 = plt.subplots(figsize=(12, 6))
     ax2 = ax1.twinx()
+
     
     # Plot final velocities on left axis (red)
-    line1 = ax1.plot(velocities, final_velocities, 'r-', label='Velocidad Final')
+    line1 = ax1.plot(velocities, final_velocities, 'r-o', label='Velocidad Final')
     ax1.set_xlabel('Velocidad Inicial (m/s)')
     ax1.set_ylabel('Velocidad Final (m/s)', color='r')
     ax1.tick_params(axis='y', labelcolor='r')
     
     # Plot minimum distances on right axis (blue)
-    line2 = ax2.plot(velocities, min_distances, 'b-', label='Distancia Mínima')
+    line2 = ax2.plot(velocities, min_distances, 'b-o', label='Distancia Mínima')
     ax2.set_ylabel('Distancia Mínima a la Luna (m)', color='b')
     ax2.tick_params(axis='y', labelcolor='b')
     
@@ -163,13 +168,20 @@ def analyze_combined_parameters(v0_range):
     labels = [l.get_label() for l in lines]
     ax1.legend(lines, labels, loc='upper left')
     
+    ax1.set_ylim(0.1, max(final_velocities)*1.1)  # Set y-limits for both axesa
+    ax2.set_ylim(0.1, max(min_distances)*1.1)  # Set y-limits for both axes
     plt.title('Velocidad Final y Distancia Mínima vs Velocidad Inicial')
     plt.grid(True)
     plt.show()
 
 # Example usage
 if __name__ == '__main__':
-    v0_range = np.linspace(10500, 11500, 50)
+    
+    # calculation of initial velocity
+    r1 = S * (np.sqrt(Mt)/(np.sqrt(Mt) + np.sqrt(Ml)))
+    v0 = np.sqrt(2) * np.sqrt(G*Mt/Rt - G*Ml/(S-Rt) - G*Mt/r1 + G*Ml/(S-r1))
+    # v0_range = np.linspace(v0*0.5, v0*1.5, 500)
+    v0_range = np.linspace(9000, 13000, 100)
     analyze_combined_parameters(v0_range)
 
 # This improved model includes:

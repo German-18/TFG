@@ -62,7 +62,7 @@ def system_equations(t, state):
 def collision_moon(t, state):
     x, y = state[:2]
     r_moon = np.sqrt((x - S*np.cos(w*t))**2 + (y - S*np.sin(w*t))**2)
-    disSupMoon = S-r_moon-Rl #Distancia entre el satélite y la Luna
+    disSupMoon = r_moon-(Rl) #Distancia entre el satélite y la Luna
     return disSupMoon
 collision_moon.terminal = True # La integración se detiene cuando la función de eventos es cero
 
@@ -70,22 +70,20 @@ collision_moon.terminal = True # La integración se detiene cuando la función d
 def collision_earth(t, state):
     x, y = state[:2]
     r_earth = np.sqrt(x**2 + y**2)
-    disSupEarth = r_earth-(Rt-10) #Distancia entre el satélite y 10 metros por debajo de la superficie de la Tierra
+    disSupEarth = r_earth-(Rt-0.1) #Distancia entre el satélite y 10 cm por debajo de la superficie de la Tierra
     return disSupEarth
 collision_earth.terminal = True # La integración se detiene cuando la función de eventos es cero
 
 # Simulación y graficación
 
-def simulate_trajectory(v0, theta_0=-np.pi/4, t_max=100*24*3600):
+def simulate_trajectory(v0, theta_0=-np.pi/4, t_max=100*24*3600): #100 días en segundos
     """Simula y grafica la trayectoria"""
     # Condiciones iniciales
     state0 = [Rt, 0, v0, 0]
     t_span = (0, t_max)
     
     # Resolver sistema
-    sol = solve_ivp(system_equations, t_span, state0, 
-                    events=[collision_moon,collision_earth], method='RK45',
-                    rtol=1e-8, atol=1e-8)
+    sol = solve_ivp(system_equations, t_span, state0, events=[collision_moon,collision_earth], method='RK45',rtol=1e-8, atol=1e-8)
     
     # Configurar el plot
     fig, ax = plt.subplots(figsize=(12, 12))
@@ -139,57 +137,17 @@ if __name__ == '__main__':
     theta_0 = -np.pi/4  # posición angular inicial de la Luna
     simulate_trajectory(v0, theta_0)
 
-def analyze_min_distance(v0_range, theta_0 = -np.pi/4):
-    """Analiza la distancia mínima a la superficie lunar para diferentes velocidades iniciales"""
-    min_distances = []
-    velocities = []
-    
-    for v0 in v0_range:
-        # Condiciones iniciales
-        state0 = [Rt, 0, v0, 0]
-        t_span = (0, 5*24*3600)
-        
-        # Resolver sistema
-        sol = solve_ivp(system_equations, t_span, state0, 
-                       method='RK45', rtol=1e-8, atol=1e-8)
-        
-        # Calcular distancia mínima a la Luna
-        min_dist = float('inf')
-        for i in range(len(sol.t)):
-            moon_x, moon_y = moon_position(sol.t[i], theta_0)
-            dist = np.sqrt((sol.y[0][i] - moon_x)**2 + (sol.y[1][i] - moon_y)**2) - Rl
-            min_dist = min(min_dist, dist)
-        
-        min_distances.append(min_dist)
-        velocities.append(v0)
-    
-    # Graficar resultados
-    plt.figure(figsize=(10, 6))
-    plt.plot(velocities, min_distances, 'b-')
-    plt.grid(True)
-    plt.title('Distancia Mínima a la Superficie Lunar vs Velocidad Inicial')
-    plt.xlabel('Velocidad Inicial (m/s)')
-    plt.ylabel('Distancia Mínima (m)')
-    plt.show()
-
-# Ejemplo de uso
-if __name__ == '__main__':
-    # Probar rango de velocidades de 10.5 km/s a 11.5 km/s
-    v0_range = np.linspace(10500, 11500, 50)
-    analyze_min_distance(v0_range)
+#Grafica de distancia mínima a la superficie lunar en función de la velocidad inicial
 
 def analyze_min_distance_3d(v0_range, theta_range):
     """
-    Analiza y visualiza en 3D la distancia mínima a la superficie lunar para diferentes 
-    velocidades iniciales y posiciones iniciales de la Luna
+    Analiza la distancia mínima a la Luna para diferentes velocidades y posiciones iniciales
     """
-    from mpl_toolkits.mplot3d import Axes3D
-    
-    # Crear mallas 2D para velocidades y ángulos
+    # Crear mallas para el gráfico 3D
     V, T = np.meshgrid(v0_range, theta_range)
-    min_distances = np.zeros_like(V)
+    Z = np.zeros_like(V)
     
-    # Contador de progreso
+    # Calcular distancias mínimas
     total = len(v0_range) * len(theta_range)
     counter = 0
     
@@ -200,10 +158,10 @@ def analyze_min_distance_3d(v0_range, theta_range):
             t_span = (0, 5*24*3600)
             
             # Resolver sistema
-            sol = solve_ivp(lambda t, state: system_equations(t, state, theta), 
-                          t_span, state0, method='RK45', rtol=1e-8, atol=1e-8)
+            sol = solve_ivp(system_equations, t_span, state0, 
+                          method='RK45', rtol=1e-8, atol=1e-8, events=[collision_moon,collision_earth])
             
-            # Calcular distancia mínima a la Luna
+            # Calcular distancia mínima
             min_dist = float('inf')
             for k in range(len(sol.t)):
                 moon_x, moon_y = moon_position(sol.t[k], theta)
@@ -211,41 +169,34 @@ def analyze_min_distance_3d(v0_range, theta_range):
                              (sol.y[1][k] - moon_y)**2) - Rl
                 min_dist = min(min_dist, dist)
             
-            min_distances[i,j] = min_dist
-            
-            # Actualizar progreso
+            Z[i,j] = min_dist
             counter += 1
-            if counter % 10 == 0:
-                print(f"Progreso: {counter}/{total}")
+            print(f"Progreso: {counter}/{total}")
     
     # Crear gráfico 3D
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection='3d')
+    # save data as csv
     
-    # Graficar superficie
-    surf = ax.plot_surface(V, T*180/np.pi, min_distances, 
-                          cmap='viridis', 
-                          edgecolor='none')
-    
-    # Añadir barra de color
-    fig.colorbar(surf, ax=ax, label='Distancia Mínima a la Superficie Lunar (m)')
+    # Convertir unidades a km
+    surf = ax.plot_surface(V/1000, T*180/np.pi, Z/1000, 
+                          cmap='viridis', edgecolor='none')
     
     # Etiquetas y título
-    ax.set_xlabel('Velocidad Inicial (m/s)')
+    ax.set_xlabel('Velocidad Inicial (km/s)')
     ax.set_ylabel('Posición Inicial Luna (grados)')
-    ax.set_zlabel('Distancia Mínima (m)')
-    ax.set_title('Vista 3D: Distancia Mínima vs Condiciones Iniciales')
+    ax.set_zlabel('Distancia Mínima (km)')
+    ax.set_title('Distancia Mínima vs Velocidad y Posición Inicial')
     
-    # Rotar vista para mejor visualización
-    ax.view_init(elev=30, azim=45)
+    # Barra de color
+    fig.colorbar(surf, ax=ax, label='Distancia Mínima (km)')
     
     plt.show()
 
 # Ejemplo de uso
 if __name__ == '__main__':
-    # Definir rangos de análisis
-    v0_range = np.linspace(10500, 11500, 20)  # 20 velocidades diferentes
-    theta_range = np.linspace(-np.pi/4, 0, 15)  # 15 ángulos diferentes
+    v0_range = np.linspace(11100, 11200, 100)  # 10 velocidades diferentes
+    theta_range = np.linspace(-np.pi/6, -np.pi/12, 100)  # 8 ángulos diferentes
     analyze_min_distance_3d(v0_range, theta_range)
 
 # Está organizado por funciones específicas:
